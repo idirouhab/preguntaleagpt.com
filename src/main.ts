@@ -21,6 +21,7 @@ let copyTimer: ReturnType<typeof setTimeout>;
 let typingTimer: ReturnType<typeof setTimeout>;
 let linkRevision = 0;
 let copyAttempt = 0;
+let sharing = false;
 let creating: symbol | null = null;
 let flow: ReturnType<typeof createFlowMotion> | undefined;
 
@@ -35,6 +36,7 @@ function render() {
   if (!watching) {
     $<HTMLTextAreaElement>('#question').value = draft;
     if (shareUrl) $<HTMLInputElement>('#share-url').value = shareUrl;
+    updateShareButton();
     resizeInput(); updateSend();
   }
   flow = createFlowMotion(app);
@@ -60,6 +62,7 @@ function attachEvents() {
       case 'replay': void startDemo(playbackQuestion, isPreview); break;
       case 'skip': run?.abort(); showFinish(); break;
       case 'copy': void copyLink(); break;
+      case 'share': void shareLink(); break;
     }
   }));
   const input = $<HTMLTextAreaElement>('#question');
@@ -141,6 +144,7 @@ async function createLink() {
   const revision = ++linkRevision;
   clearTimeout(copyTimer);
   $<HTMLInputElement>('#share-url').value = shareUrl;
+  updateShareButton();
   const reveal = $('.share-reveal');
   const wasOpen = reveal.classList.contains('is-open');
   reveal.inert = false;
@@ -167,6 +171,45 @@ async function createLink() {
 function previewDraft() {
   if (draft.trim() && !validateDraft()) return;
   void startDemo(draft.trim() ? normalizeQuestion(draft) : EXAMPLE, true);
+}
+function nativeShareData(): ShareData {
+  return { title: 'Pregúntale a GPT', url: shareUrl };
+}
+function updateShareButton() {
+  const button = $<HTMLButtonElement>('[data-action="share"]');
+  let supported = Boolean(shareUrl) && typeof navigator.share === 'function';
+  try {
+    if (supported && typeof navigator.canShare === 'function') supported = navigator.canShare(nativeShareData());
+  } catch {
+    supported = false;
+  }
+  button.hidden = !supported;
+  button.disabled = sharing;
+}
+async function shareLink() {
+  if (!shareUrl || sharing || typeof navigator.share !== 'function') return;
+  const revision = linkRevision;
+  const button = $<HTMLButtonElement>('[data-action="share"]');
+  sharing = true;
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  clearTimeout(toastTimer);
+  $('.toast').hidden = true;
+  try {
+    // Call directly from the click so the browser retains user activation.
+    await navigator.share(nativeShareData());
+    if (!button.isConnected || mode !== 'create' || revision !== linkRevision) return;
+    setStep(4);
+  } catch (error) {
+    if (!button.isConnected || mode !== 'create' || revision !== linkRevision) return;
+    if (error instanceof DOMException && error.name === 'AbortError') return;
+    toast('No se pudo abrir el menú para compartir. Usa «Copiar enlace».');
+    $('[data-action="copy"]').focus({ preventScroll: true });
+  } finally {
+    sharing = false;
+    button.removeAttribute('aria-busy');
+    if (mode === 'create') updateShareButton();
+  }
 }
 async function copyLink() {
   if (!shareUrl) return;

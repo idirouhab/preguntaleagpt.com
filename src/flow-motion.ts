@@ -9,6 +9,7 @@ export function createFlowMotion(root: HTMLElement) {
   let currentStep = 1;
   let disposed = false;
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const compact = () => matchMedia('(max-width: 700px), (max-width: 950px) and (max-height: 500px)').matches;
 
   function animate(element: HTMLElement, frames: Keyframe[], options: KeyframeAnimationOptions) {
     if (disposed || reduced()) return Promise.resolve(false);
@@ -18,7 +19,8 @@ export function createFlowMotion(root: HTMLElement) {
   }
 
   function placeHighlight() {
-    if (disposed) return;
+    // Compact steps crossfade in place; resizing the keyboard must not move a backdrop.
+    if (disposed || compact()) return;
     const target = shell.querySelector<HTMLElement>(`[data-step="${Math.min(currentStep, 3)}"] .step-group`)!;
     const bounds = shell.getBoundingClientRect();
     const rect = target.getBoundingClientRect();
@@ -55,6 +57,12 @@ export function createFlowMotion(root: HTMLElement) {
       if (reduced()) return Promise.resolve(true);
       const badge = shell.querySelector<HTMLElement>('[data-step="2"] .step-number')!;
       const link = root.querySelector<HTMLElement>('[data-action="create"] .icon')!;
+      if (compact()) {
+        return animate(link, [
+          { opacity: .4, transform: 'scale(.92)' },
+          { opacity: 1, transform: 'scale(1)' },
+        ], { duration: 240, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      }
       void animate(link, [
         { opacity: .35, transform: 'scale(.7) rotate(-25deg)' },
         { opacity: 1, transform: 'scale(1.15) rotate(8deg)', offset: .6 },
@@ -74,6 +82,13 @@ export function createFlowMotion(root: HTMLElement) {
     },
     reveal(panel: HTMLElement, onReady: () => void) {
       if (reduced()) { onReady(); return; }
+      if (compact()) {
+        void animate(panel, [
+          { opacity: 0, transform: 'translateY(6px)' },
+          { opacity: 1, transform: 'translateY(0)' },
+        ], { duration: 260, easing: 'cubic-bezier(.2,.8,.2,1)' }).then(done => { if (done && !disposed) onReady(); });
+        return;
+      }
       const children = [...panel.children] as HTMLElement[];
       children.forEach((child, index) => void animate(child, [
         { opacity: 0, transform: 'translateY(12px)' },
@@ -85,7 +100,7 @@ export function createFlowMotion(root: HTMLElement) {
       ], { duration: 620, easing: 'cubic-bezier(.22,1,.36,1)' }).then(done => { if (done && !disposed) onReady(); });
     },
     flyLink(from: HTMLElement, to: HTMLElement) {
-      if (reduced()) return;
+      if (reduced() || compact()) return;
       const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
       const x = a.left + a.width / 2, y = a.top + a.height / 2;
       const dx = b.left + b.width / 2 - x, dy = b.top + b.height / 2 - y;
@@ -99,6 +114,10 @@ export function createFlowMotion(root: HTMLElement) {
     },
     celebrate(button: HTMLElement) {
       if (reduced()) return;
+      if (compact()) {
+        void animate(button, [{ opacity: .7 }, { opacity: 1 }], { duration: 180, easing: 'ease-out' });
+        return;
+      }
       void animate(button, [{ transform: 'scale(1)' }, { transform: 'scale(1.055)', offset: .35 }, { transform: 'scale(1)' }], { duration: 420, easing: 'cubic-bezier(.22,1,.36,1)' });
       const rect = button.getBoundingClientRect();
       for (let i = 0; i < 12; i++) {

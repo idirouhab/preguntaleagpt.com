@@ -18,6 +18,7 @@ Abre <http://127.0.0.1:5173/>. **Ver ejemplo** reproduce una demostración sin c
 ## Cómo funciona
 
 - Un solo Enter muestra el paso «Crea el enlace» y avanza automáticamente a «Comparte».
+- «Compartir» abre el menú nativo del dispositivo cuando el navegador lo permite; «Copiar enlace» sigue siempre disponible.
 - La pregunta viaja en `?q=…`; al abrir el enlace, se reproduce la animación.
 - El botón final abre la pregunta en ChatGPT. La web no genera respuestas ni utiliza una API de IA.
 - Admite tildes, emoji y hasta 1.000 caracteres Unicode. Shift+Enter inserta un salto de línea.
