@@ -1,0 +1,33 @@
+node_modules/
+dist/
+.DS_Store
+.env*
+!.env.example
+output/
+
+# Local checks and generated reports
+/docs/screenshots/
+/docs/qa.md
+/docs/mobile-qa.md
+/docs/seo-audit.md
+/test-results/
+/playwright-report/
+/coverage/
+/tmp/
+*.log
+*.tsbuildinfo
+
+# Local design files and exports not used by the website
+/design/
+/public/brand/contrapregunta.png
+/public/favicon-16.png
+/public/favicon-32.png
+/public/favicon-48.png
+/public/brand/codex-*.svg
+
+# Local editor and Python files
+.idea/
+.vscode/
+__pycache__/
+*.py[cod]
+.venv/
