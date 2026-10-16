@@ -32,6 +32,7 @@ function discoverableSite(site: URL): Plugin {
           meta('property', 'og:image:height', '630'),
           meta('property', 'og:image:alt', SOCIAL_IMAGE_ALT),
           meta('name', 'twitter:card', 'summary_large_image'),
+          meta('name', 'twitter:site', '@idir_ouhab'),
           meta('name', 'twitter:title', SOCIAL_TITLE),
           meta('name', 'twitter:description', SOCIAL_DESCRIPTION),
           meta('name', 'twitter:image', socialImage),

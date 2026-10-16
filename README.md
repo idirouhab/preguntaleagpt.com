@@ -57,6 +57,8 @@ La portada incluye HTML prerenderizado, canonical, Open Graph, tarjeta grande de
 
 La tarjeta social mide 1200 × 630 px. El favicon tiene fondo transparente y adapta sus colores al tema claro u oscuro del navegador.
 
+La tarjeta de X atribuye el sitio a `@idir_ouhab`. `public/site.webmanifest` define el nombre, los colores y los iconos de 192 y 512 px para añadir la web a la pantalla de inicio. Sus rutas relativas admiten despliegues en subdirectorios. El manifiesto no añade funcionamiento sin conexión.
+
 ## Contribuir
 
 Abre una incidencia para describir un problema o propón una pull request. Mantén los textos de la interfaz en español, comprueba la vista móvil y ejecuta `npm test` y `npm run build` antes de enviar cambios.

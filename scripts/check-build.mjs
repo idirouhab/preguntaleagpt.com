@@ -11,7 +11,8 @@ const meta = name => {
   assert.equal(matches.length, 1, `Expected one ${name} meta tag`);
   return matches[0].content;
 };
-const canonicalTags = [...html.matchAll(/<link\b[^>]*>/g)].map(([tag]) => attrs(tag)).filter(tag => tag.rel === 'canonical');
+const links = [...html.matchAll(/<link\b[^>]*>/g)].map(([tag]) => attrs(tag));
+const canonicalTags = links.filter(tag => tag.rel === 'canonical');
 assert.equal(canonicalTags.length, 1);
 const site = new URL(canonicalTags[0].href);
 assert.equal(site.search, '');
@@ -33,6 +34,7 @@ assert.ok(meta('og:title'));
 assert.ok(meta('og:description'));
 assert.match(meta('robots'), /max-image-preview:large/);
 assert.equal(meta('twitter:card'), 'summary_large_image');
+assert.equal(meta('twitter:site'), '@idir_ouhab');
 assert.equal(meta('twitter:title'), meta('og:title'));
 assert.equal(meta('twitter:description'), meta('og:description'));
 assert.equal(meta('twitter:image'), meta('og:image'));
@@ -47,6 +49,30 @@ const png = await readFile(resolve(output, 'social/preview-v1.png'));
 assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
 assert.equal(png.readUInt32BE(16), 1200);
 assert.equal(png.readUInt32BE(20), 630);
+
+const manifestTags = links.filter(tag => tag.rel === 'manifest');
+assert.equal(manifestTags.length, 1, 'Expected one web app manifest link');
+const manifestUrl = new URL(manifestTags[0].href, site);
+assert.equal(manifestUrl.href, new URL('site.webmanifest', site).href);
+const manifest = JSON.parse(await readFile(resolve(output, 'site.webmanifest'), 'utf8'));
+for (const field of ['id', 'start_url', 'scope']) {
+  assert.ok(manifest[field], `Missing manifest ${field}`);
+  assert.equal(new URL(manifest[field], manifestUrl).href, site.href, `Manifest ${field} must resolve to the deployment root`);
+}
+assert.ok(manifest.name && manifest.short_name);
+assert.equal(manifest.theme_color, meta('theme-color'));
+for (const size of [192, 512]) {
+  const icon = manifest.icons.find(icon => icon.sizes === `${size}x${size}`);
+  assert.ok(icon, `Missing ${size}px app icon`);
+  assert.equal(icon.type, 'image/png');
+  const url = new URL(icon.src, manifestUrl);
+  assert.equal(url.origin, site.origin);
+  assert.ok(url.pathname.startsWith(site.pathname));
+  const data = await readFile(resolve(output, decodeURIComponent(url.pathname.slice(site.pathname.length))));
+  assert.equal(data.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  assert.equal(data.readUInt32BE(16), size);
+  assert.equal(data.readUInt32BE(20), size);
+}
 
 const schemaTags = [...html.matchAll(/<script\b[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)];
 assert.equal(schemaTags.length, 1);
@@ -80,4 +106,4 @@ const sitemap = await readFile(resolve(output, 'sitemap.xml'), 'utf8');
 assert.equal((sitemap.match(/<loc>/g) || []).length, 1);
 assert.ok(sitemap.includes(`<loc>${site.href.replaceAll('&', '&amp;')}</loc>`));
 assert.ok((await readFile(resolve(output, 'llms.txt'), 'utf8')).includes(site.href));
-console.log(`Built SEO checked: prerendered UI, metadata, JSON-LD, discovery files, local assets and 1200×630 PNG (${site.href}).`);
+console.log(`Built SEO checked: prerendered UI, metadata, JSON-LD, manifest and app icons, discovery files, local assets and 1200×630 PNG (${site.href}).`);
