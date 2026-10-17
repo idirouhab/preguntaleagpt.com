@@ -45,6 +45,7 @@ test('static creator markup contains the approved UI and respects a non-root ass
   assert.match(html, /data-action="create">Crear enlace/);
   assert.match(html, /data-action="preview">Ver ejemplo/);
   assert.match(html, /src="\/demo\/brand\/idir-ai\.svg"/);
-  assert.doesNotMatch(html, /Escribe una pregunta, copia|Un proyecto independiente|Qué es esto/);
+  assert.doesNotMatch(html, /Escribe una pregunta, copia|Qué es esto/);
+  assert.match(html, /Proyecto independiente, sin relación con OpenAI\./);
   assert.doesNotMatch(renderPage({ draft: '<script>private-question</script>' }), /private-question/);
 });

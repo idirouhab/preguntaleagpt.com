@@ -4,7 +4,7 @@ import { renderPage } from './view';
 import { SITE_TITLE } from './seo';
 import { playDemo } from './animation';
 import { createFlowMotion } from './flow-motion';
-import { buildChatGptUrl, buildShareUrl, normalizeQuestion, readSharedQuestion, validateQuestion } from './links';
+import { MAX_QUESTION_LENGTH, buildChatGptUrl, buildShareUrl, normalizeQuestion, questionLength, readSharedQuestion, validateQuestion } from './links';
 
 const EXAMPLE = '¿Cómo se hace una tortilla de patatas?';
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -37,7 +37,7 @@ function render() {
     $<HTMLTextAreaElement>('#question').value = draft;
     if (shareUrl) $<HTMLInputElement>('#share-url').value = shareUrl;
     updateShareButton();
-    resizeInput(); updateSend();
+    resizeInput(); updateSend(); updateCount();
   }
   flow = createFlowMotion(app);
   if (!watching) setStep(shareUrl ? 3 : draft.trim() ? 2 : 1);
@@ -51,6 +51,14 @@ function resizeInput() {
 }
 function updateSend() {
   $<HTMLButtonElement>('.send-button').disabled = !normalizeQuestion($<HTMLTextAreaElement>('#question').value);
+}
+function updateCount() {
+  const length = questionLength(draft);
+  const count = $('#question-count');
+  // Only shown near the limit, so short questions stay uncluttered.
+  count.hidden = length < MAX_QUESTION_LENGTH - 100;
+  count.textContent = `${length}/${MAX_QUESTION_LENGTH}`;
+  count.classList.toggle('is-over', length > MAX_QUESTION_LENGTH);
 }
 function attachEvents() {
   app.querySelectorAll<HTMLElement>('[data-action]').forEach(button => button.addEventListener('click', () => {
@@ -70,7 +78,7 @@ function attachEvents() {
     if (mode !== 'create') return;
     creating = null;
     draft = input.value;
-    resizeInput(); updateSend();
+    resizeInput(); updateSend(); updateCount();
     $('#question-error').textContent = '';
     input.removeAttribute('aria-invalid');
     const invalidatedLink = Boolean(shareUrl);
@@ -106,6 +114,8 @@ function attachEvents() {
     else if (finished) window.open(buildChatGptUrl(playbackQuestion), '_blank', 'noopener,noreferrer');
   });
   $<HTMLInputElement>('#share-url')?.addEventListener('click', event => (event.target as HTMLInputElement).select());
+  // Focus without a #main fragment, which would replace a shared question in the URL.
+  $('.skip-link').addEventListener('click', event => { event.preventDefault(); $('#main').focus(); });
 }
 function validateDraft() {
   const error = validateQuestion(draft);
@@ -170,10 +180,17 @@ async function createLink() {
 }
 function previewDraft() {
   if (draft.trim() && !validateDraft()) return;
-  void startDemo(draft.trim() ? normalizeQuestion(draft) : EXAMPLE, true);
+  const question = draft.trim() ? normalizeQuestion(draft) : EXAMPLE;
+  // A history entry lets the browser's Back button return to the editor.
+  history.pushState({ preview: question }, '');
+  void startDemo(question, true);
+}
+function previewState(): string | null {
+  const preview: unknown = history.state?.preview;
+  return typeof preview === 'string' ? preview : null;
 }
 function nativeShareData(): ShareData {
-  return { title: 'Pregúntale a GPT', url: shareUrl };
+  return { title: 'Pregúntale a GPT', text: 'Déjame preguntarle a ChatGPT por ti.', url: shareUrl };
 }
 function updateShareButton() {
   const button = $<HTMLButtonElement>('[data-action="share"]');
@@ -250,7 +267,8 @@ function setStep(step: number) {
     const number = Number(item.dataset.step);
     item.classList.toggle('is-current', number === step);
     item.classList.toggle('is-done', number < step);
-    item.querySelector('.step-number')?.setAttribute('aria-label', `Paso ${number}${number < step ? ', completado' : ''}`);
+    const status = item.querySelector('.step-status');
+    if (status) status.textContent = `Paso ${number}${number < step ? ', completado' : ''}`;
     if (number === step) item.setAttribute('aria-current', 'step');
     else item.removeAttribute('aria-current');
   });
@@ -314,6 +332,8 @@ function showFinish() {
   }
 }
 function returnToCreator() {
+  // Leave the preview's history entry; popstate brings the editor back.
+  if (previewState() !== null) { history.back(); return; }
   run?.abort(); run = null;
   mode = 'create'; finished = false;
   render();
@@ -324,7 +344,7 @@ function reset() {
   run?.abort(); run = null;
   draft = shareUrl = '';
   mode = 'create'; finished = false;
-  if (location.search) history.replaceState(null, '', location.pathname);
+  if (location.search || location.hash) history.replaceState(null, '', location.pathname);
   document.title = SITE_TITLE;
   render(); $('#question').focus();
 }
@@ -335,17 +355,25 @@ function toast(message: string) {
 }
 function loadFromUrl() {
   run?.abort();
-  const shared = readSharedQuestion(location.search);
+  const shared = readSharedQuestion(location.search, location.hash);
   if (shared.question) {
     document.title = 'Una pregunta para ti — Pregúntale a GPT';
     void startDemo(shared.question, false);
   } else {
+    document.title = SITE_TITLE;
     mode = 'create'; render();
     if (shared.error) toast(shared.error);
   }
 }
 window.addEventListener('pagehide', () => run?.abort());
 window.addEventListener('pageshow', event => { if (event.persisted && mode === 'watch' && !finished) void startDemo(playbackQuestion, isPreview); });
-window.addEventListener('popstate', loadFromUrl);
+window.addEventListener('popstate', () => {
+  const preview = previewState();
+  if (preview !== null) void startDemo(preview, true);
+  else if (mode === 'watch' && isPreview) returnToCreator();
+  else loadFromUrl();
+});
 window.addEventListener('resize', resizeInput);
+// A reload starts from the editor, so drop a preview entry left in history.
+if (previewState() !== null) history.replaceState(null, '');
 loadFromUrl();

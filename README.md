@@ -19,10 +19,10 @@ Abre <http://127.0.0.1:5173/>. **Ver ejemplo** reproduce una demostración sin c
 
 - Un solo Enter muestra el paso «Crea el enlace» y avanza automáticamente a «Comparte».
 - «Compartir» abre el menú nativo del dispositivo cuando el navegador lo permite; «Copiar enlace» sigue siempre disponible.
-- La pregunta viaja en `?q=…`; al abrir el enlace, se reproduce la animación.
+- La pregunta viaja codificada en base64url en el fragmento `#q=…`: no se lee a simple vista y el navegador no la envía al servidor. Al abrir el enlace, se reproduce la animación. Los enlaces antiguos con `?q=…` siguen funcionando.
 - El botón final abre la pregunta en ChatGPT. La web no genera respuestas ni utiliza una API de IA.
-- Admite tildes, emoji y hasta 1.000 caracteres Unicode. Shift+Enter inserta un salto de línea.
-- Respeta el movimiento reducido y permite saltar, repetir y previsualizar la animación.
+- Admite tildes, emoji y hasta 1.000 caracteres Unicode; un contador aparece al acercarse al límite. Shift+Enter inserta un salto de línea.
+- Respeta el movimiento reducido y permite saltar, repetir y previsualizar la animación. El botón Atrás del navegador vuelve de la vista previa al editor.
 
 TypeScript, CSS y Vite, sin dependencias de producción, base de datos ni claves API. Las preguntas forman parte de enlaces compartibles: no deben incluir información privada. Se insertan como texto, nunca como HTML.
 
@@ -58,6 +58,10 @@ La portada incluye HTML prerenderizado, canonical, Open Graph, tarjeta grande de
 La tarjeta social mide 1200 × 630 px. El favicon tiene fondo transparente y adapta sus colores al tema claro u oscuro del navegador.
 
 La tarjeta de X atribuye el sitio a `@idir_ouhab`. `public/site.webmanifest` define el nombre, los colores y los iconos de 192 y 512 px para añadir la web a la pantalla de inicio. Sus rutas relativas admiten despliegues en subdirectorios. El manifiesto no añade funcionamiento sin conexión.
+
+## Aviso
+
+Pregúntale a GPT es un proyecto independiente, sin relación con OpenAI. ChatGPT es una marca de OpenAI. El pie de página lo indica en todas las vistas.
 
 ## Contribuir
 

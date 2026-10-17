@@ -23,6 +23,7 @@ assert.equal((html.match(/<h1>/g) || []).length, 1);
 assert.match(html, /<h1>Déjame preguntarle a <strong>ChatGPT<\/strong> por ti\.<\/h1>/);
 assert.match(html, /<textarea id="question"/);
 assert.match(html, /data-action="create">Crear enlace/);
+assert.match(html, /sin relación con OpenAI/);
 assert.doesNotMatch(html, /<!--app-html-->|<div id="app"><\/div>/);
 assert.match(html, /<title>[^<]*LMGTFY para ChatGPT en español<\/title>/);
 assert.match(meta('description'), /Crea gratis un enlace animado/);
