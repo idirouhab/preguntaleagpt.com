@@ -39,6 +39,7 @@ export function renderPage({ watching = false, isPreview = false, shareUrl = '',
               <div class="chatgpt-screen" ${watching ? 'hidden' : ''}>
                 <div class="chatgpt-heading">ChatGPT ${icon('chevron')}</div>
                 <div class="chatgpt-center">
+                  ${watching ? '<div class="chat-thread" hidden><p class="chat-question"></p><p class="chat-thinking">Pensando…</p></div>' : ''}
                   <h2>¿En qué puedo ayudarte?</h2>
                   <form class="composer-form" novalidate>
                     <div class="composer"><span class="composer-plus" aria-hidden="true">${icon('plus')}</span><textarea id="question" rows="1" placeholder="Pregunta lo que quieras" aria-label="Escribe la pregunta" aria-describedby="question-error" enterkeyhint="send" ${watching ? 'readonly tabindex="-1" inputmode="none"' : ''}></textarea><button class="send-button" type="submit" aria-label="${watching ? 'Enviar pregunta' : 'Continuar'}" title="${watching ? 'Enviar pregunta' : 'Continuar'}" disabled>${icon('arrow')}</button></div>

@@ -1,5 +1,3 @@
-import { icon } from './icons';
-
 /** Motion is scoped to one render; cancellation cannot publish a stale link. */
 export function createFlowMotion(root: HTMLElement) {
   const shell = root.querySelector<HTMLElement>('.steps-shell')!;
@@ -67,12 +65,12 @@ export function createFlowMotion(root: HTMLElement) {
         { opacity: .35, transform: 'scale(.7) rotate(-25deg)' },
         { opacity: 1, transform: 'scale(1.15) rotate(8deg)', offset: .6 },
         { opacity: 1, transform: 'scale(1) rotate(0deg)' },
-      ], { duration: 1000, easing: 'cubic-bezier(.22,1,.36,1)' });
+      ], { duration: 360, easing: 'cubic-bezier(.22,1,.36,1)' });
       return animate(badge, [
         { boxShadow: '0 0 0 0 rgba(32,33,36,.18)' },
         { boxShadow: '0 0 0 10px rgba(32,33,36,0)', offset: .75 },
         { boxShadow: '0 0 0 4px rgba(32,33,36,.03)' },
-      ], { duration: 1000, easing: 'ease-out' });
+      ], { duration: 360, easing: 'ease-out' });
     },
     step(step: number) {
       if (step === currentStep) return;
@@ -98,19 +96,6 @@ export function createFlowMotion(root: HTMLElement) {
         { opacity: 0, transform: 'translateY(18px) scale(.98)' },
         { opacity: 1, transform: 'translateY(0) scale(1)' },
       ], { duration: 620, easing: 'cubic-bezier(.22,1,.36,1)' }).then(done => { if (done && !disposed) onReady(); });
-    },
-    flyLink(from: HTMLElement, to: HTMLElement) {
-      if (reduced() || compact()) return;
-      const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
-      const x = a.left + a.width / 2, y = a.top + a.height / 2;
-      const dx = b.left + b.width / 2 - x, dy = b.top + b.height / 2 - y;
-      const token = decorate('flying-link', icon('link'));
-      token.style.left = `${x}px`; token.style.top = `${y}px`;
-      void animate(token, [
-        { transform: 'translate(-50%, -50%) scale(.45)', opacity: 0 },
-        { transform: `translate(calc(-50% + ${dx * .45}px), calc(-50% + ${dy * .4 - 45}px)) rotate(-15deg) scale(1.1)`, opacity: 1, offset: .4 },
-        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(0deg) scale(.75)`, opacity: 0 },
-      ], { duration: 680, easing: 'cubic-bezier(.22,.7,.25,1)' }).then(() => remove(token));
     },
     celebrate(button: HTMLElement) {
       if (reduced()) return;

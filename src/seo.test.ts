@@ -49,6 +49,8 @@ test('static creator markup contains the approved UI and respects a non-root ass
   assert.match(html, /<h2 id="about-title">¿Qué es Pregúntale a GPT\?<\/h2>/);
   assert.match(html, /LMGTFY \(«Let me Google that for you»\) de ChatGPT, en español/);
   assert.doesNotMatch(renderPage({ watching: true }), /about-title/);
+  assert.match(renderPage({ watching: true }), /<div class="chat-thread" hidden><p class="chat-question"><\/p><p class="chat-thinking">Pensando…<\/p><\/div>/);
+  assert.doesNotMatch(html, /chat-thread/);
   assert.match(html, /Proyecto independiente, sin relación con OpenAI\./);
   assert.doesNotMatch(renderPage({ draft: '<script>private-question</script>' }), /private-question/);
 });

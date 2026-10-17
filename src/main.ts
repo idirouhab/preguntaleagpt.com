@@ -7,6 +7,8 @@ import { createFlowMotion } from './flow-motion';
 import { MAX_QUESTION_LENGTH, buildChatGptUrl, buildShareUrl, normalizeQuestion, questionLength, readSharedQuestion, validateQuestion } from './links';
 
 const EXAMPLE = '¿Cómo se hace una tortilla de patatas?';
+/** How long the fake ChatGPT "thinks" before the punchline. */
+const THINKING_TIME = 1000;
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const $ = <T extends HTMLElement>(selector: string) => app.querySelector<T>(selector)!;
 let draft = '';
@@ -111,7 +113,6 @@ function attachEvents() {
   $('.composer-form').addEventListener('submit', event => {
     event.preventDefault();
     if (mode === 'create') void createLink();
-    else if (finished) window.open(buildChatGptUrl(playbackQuestion), '_blank', 'noopener,noreferrer');
   });
   $<HTMLInputElement>('#share-url')?.addEventListener('click', event => (event.target as HTMLInputElement).select());
   // Focus without a #main fragment, which would replace a shared question in the URL.
@@ -173,10 +174,7 @@ async function createLink() {
     if (panel.getBoundingClientRect().bottom > innerHeight - 20) panel.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'nearest' });
   };
   if (wasOpen) scrollToResult();
-  else {
-    flow?.reveal($('.share-panel'), scrollToResult);
-    flow?.flyLink($('[data-action="create"]'), $('.share-seal'));
-  }
+  else flow?.reveal($('.share-panel'), scrollToResult);
 }
 function previewDraft() {
   if (draft.trim() && !validateDraft()) return;
@@ -305,8 +303,10 @@ async function startDemo(text: string, preview: boolean) {
         if (phase === 'moving' || phase === 'typing') setStep(2);
         if (phase === 'sending') setStep(3);
       },
-      onSubmit: showFinish,
+      onSubmit: showSent,
     });
+    await wait(THINKING_TIME, controller.signal);
+    showFinish();
   } catch (error) {
     if (!(error instanceof DOMException && error.name === 'AbortError')) {
       console.error('No se pudo reproducir la demostración.', error);
@@ -314,17 +314,33 @@ async function startDemo(text: string, preview: boolean) {
     }
   }
 }
+function wait(duration: number, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const abort = () => { clearTimeout(timer); reject(new DOMException('La demostración se ha cancelado.', 'AbortError')); };
+    const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); }, duration);
+    if (signal.aborted) abort();
+    else signal.addEventListener('abort', abort, { once: true });
+  });
+}
+/** The question moves into a chat bubble while the fake ChatGPT thinks. */
+function showSent() {
+  const thread = $('.chat-thread');
+  if (!thread.hidden) return;
+  $('.chatgpt-screen').classList.add('is-sent');
+  $('.chat-question').textContent = playbackQuestion;
+  thread.hidden = false;
+  $<HTMLTextAreaElement>('#question').value = '';
+  resizeInput(); updateSend(); setStep(4);
+  $('.demo-announcement').textContent = 'Pregunta enviada.';
+}
 function showFinish() {
   if (finished || mode !== 'watch') return;
   finished = true; showChatGpt();
   $<HTMLInputElement>('.address-field').value = 'chatgpt.com';
-  $<HTMLTextAreaElement>('#question').value = playbackQuestion;
-  resizeInput(); updateSend(); setStep(4);
+  showSent();
   $('.demo-controls').hidden = true;
   $('.final-message').hidden = false;
   $<HTMLAnchorElement>('.chatgpt-link').href = buildChatGptUrl(playbackQuestion);
-  $('.send-button').setAttribute('aria-label', 'Abrir en ChatGPT');
-  $('.send-button').setAttribute('title', 'Abrir en ChatGPT');
   $('.demo-announcement').textContent = 'De nada. La próxima ya sabes dónde preguntar.';
   $('.final-message').focus({ preventScroll: true });
   if ($('.final-message').getBoundingClientRect().bottom > innerHeight) {

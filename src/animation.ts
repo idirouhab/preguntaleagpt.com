@@ -43,6 +43,9 @@ export function splitGraphemes(text: string): string[] {
   return Array.from(text);
 }
 
+/** Time to read the heading before the pointer starts moving. */
+const OPENING_BEAT = 600;
+
 function abortError(): DOMException {
   return new DOMException('La demostración se ha cancelado.', 'AbortError');
 }
@@ -60,6 +63,14 @@ export async function playDemo(options: DemoOptions): Promise<void> {
   const reducedMotion = options.reducedMotion ??
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // Frames stop in a hidden tab. Time before it became visible again does not
+  // count, so a background tab resumes the step instead of skipping it.
+  let visibleSince = -Infinity;
+  const onVisibilityChange = () => {
+    if (document.visibilityState === 'visible') visibleSince = performance.now();
+  };
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
   const assertActive = () => {
     if (signal.aborted || !input.isConnected || !sendButton.isConnected ||
       !cursor.isConnected || (addressInput && !addressInput.isConnected)) {
@@ -72,7 +83,8 @@ export async function playDemo(options: DemoOptions): Promise<void> {
     return new Promise((resolve, reject) => {
       let frame: number | undefined;
       let settled = false;
-      const started = performance.now();
+      let elapsed = 0;
+      let previous = performance.now();
 
       const cleanup = () => {
         if (frame !== undefined) cancelAnimationFrame(frame);
@@ -93,7 +105,9 @@ export async function playDemo(options: DemoOptions): Promise<void> {
         if (settled) return;
         try {
           assertActive();
-          const progress = Math.min(1, Math.max(0, (now - started) / duration));
+          elapsed += Math.max(0, now - Math.max(previous, visibleSince));
+          previous = now;
+          const progress = duration > 0 ? Math.min(1, elapsed / duration) : 1;
           render(progress);
           // A render callback may synchronously cancel the demo.
           if (settled) return;
@@ -111,7 +125,7 @@ export async function playDemo(options: DemoOptions): Promise<void> {
       };
 
       signal.addEventListener('abort', cancel, { once: true });
-      tick(started);
+      tick(previous);
     });
   };
 
@@ -195,6 +209,7 @@ export async function playDemo(options: DemoOptions): Promise<void> {
     if (!reducedMotion) {
       paintCursor(position);
       cursor.classList.add('is-visible');
+      await pause(OPENING_BEAT);
     }
 
     if (addressInput) {
@@ -294,6 +309,7 @@ export async function playDemo(options: DemoOptions): Promise<void> {
     if (signal.aborted) throw abortError();
     onPhase('complete');
   } finally {
+    document.removeEventListener('visibilitychange', onVisibilityChange);
     cursor.classList.remove('is-visible', 'is-clicking');
   }
 }

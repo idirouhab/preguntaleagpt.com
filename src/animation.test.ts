@@ -5,15 +5,32 @@ import { playDemo, splitGraphemes, type DemoOptions, type DemoPhase } from './an
 function fixture(t: TestContext) {
   let elapsed = 0;
   let nextFrame = 0;
+  let nextFrameDelay = 0;
+  let hiddenBeforeNextFrame = 0;
+  const visibilityListeners = new Set<() => void>();
   const frames = new Map<number, ReturnType<typeof setImmediate>>();
   const overrides = {
     window: { innerWidth: 1200, innerHeight: 800, matchMedia: () => ({ matches: false }) },
+    document: {
+      visibilityState: 'visible',
+      addEventListener: (type: string, listener: () => void) => {
+        if (type === 'visibilitychange') visibilityListeners.add(listener);
+      },
+      removeEventListener: (_type: string, listener: () => void) => visibilityListeners.delete(listener),
+    },
     performance: { now: () => elapsed },
     requestAnimationFrame: (callback: FrameRequestCallback) => {
       const id = ++nextFrame;
       frames.set(id, setImmediate(() => {
         frames.delete(id);
-        elapsed += 16;
+        if (hiddenBeforeNextFrame) {
+          // The tab was hidden, then shown again just before this frame.
+          elapsed += hiddenBeforeNextFrame;
+          hiddenBeforeNextFrame = 0;
+          visibilityListeners.forEach(listener => listener());
+        }
+        elapsed += 16 + nextFrameDelay;
+        nextFrameDelay = 0;
         callback(elapsed);
       }));
       return id;
@@ -78,6 +95,11 @@ function fixture(t: TestContext) {
     get submitted() { return submitted; },
     get elapsed() { return elapsed; },
     get pendingFrames() { return frames.size; },
+    /** A slow frame on a visible page, such as a throttled window. */
+    delayNextFrame(ms: number) { nextFrameDelay = ms; },
+    /** A hidden tab, where the browser stops delivering frames until it is shown. */
+    hideBeforeNextFrame(ms: number) { hiddenBeforeNextFrame = ms; },
+    get visibilityListeners() { return visibilityListeners.size; },
   };
 }
 
@@ -142,6 +164,70 @@ test('unmounting during playback cancels without a stale submit', async t => {
   assert.equal(demo.submitted, 0);
   assert.equal(demo.pendingFrames, 0);
   assert.equal(demo.classes.size, 0);
+});
+
+test('the pointer appears and waits a beat before it starts moving', async t => {
+  const demo = fixture(t);
+  let firstPhaseAt = -1;
+  let cursorVisible = false;
+  demo.options.onPhase = phase => {
+    if (firstPhaseAt < 0) {
+      firstPhaseAt = demo.elapsed;
+      cursorVisible = demo.classes.has('is-visible');
+    }
+    demo.phases.push(phase);
+  };
+  await playDemo(demo.options);
+
+  assert.ok(cursorVisible);
+  assert.ok(firstPhaseAt >= 600, `Pointer moved after ${firstPhaseAt} ms`);
+});
+
+function countPointerFramesToAddress(demo: ReturnType<typeof fixture>, interrupt: () => void) {
+  demo.options.addressInput = addressField();
+  let transform = '';
+  let movesToAddress = -1;
+  Object.defineProperty(demo.options.cursor.style, 'transform', {
+    get: () => transform,
+    set: (value: string) => {
+      transform = value;
+      if (movesToAddress >= 0) movesToAddress += 1;
+    },
+  });
+  demo.options.onPhase = phase => {
+    demo.phases.push(phase);
+    if (phase === 'visiting') {
+      movesToAddress = 0;
+      interrupt();
+    }
+  };
+  let movesAtNavigation = 0;
+  demo.options.onNavigate = () => { movesAtNavigation = movesToAddress; };
+  return () => movesAtNavigation;
+}
+
+test('time in a background tab does not skip the step the viewer returns to', async t => {
+  const demo = fixture(t);
+  const movesAtNavigation = countPointerFramesToAddress(demo, () => demo.hideBeforeNextFrame(30_000));
+
+  await playDemo(demo.options);
+
+  // The glide to the address bar still plays frame by frame after the tab is shown.
+  assert.ok(movesAtNavigation() > 30, `Pointer frames before navigation: ${movesAtNavigation()}`);
+  assert.ok(demo.elapsed - 30_000 >= 6500, `Visible duration: ${demo.elapsed - 30_000} ms`);
+  assert.equal(demo.submitted, 1);
+  assert.equal(demo.visibilityListeners, 0);
+});
+
+test('a slow frame on a visible page keeps real time instead of slowing down', async t => {
+  const demo = fixture(t);
+  const movesAtNavigation = countPointerFramesToAddress(demo, () => demo.delayNextFrame(5_000));
+
+  await playDemo(demo.options);
+
+  assert.ok(movesAtNavigation() <= 3, `Pointer frames before navigation: ${movesAtNavigation()}`);
+  assert.ok(demo.elapsed - 5_000 <= 9000, `Duration after the slow frame: ${demo.elapsed - 5_000} ms`);
+  assert.equal(demo.submitted, 1);
 });
 
 function addressField(onChange: (value: string) => void = () => {}) {
