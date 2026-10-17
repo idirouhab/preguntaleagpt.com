@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { discoveryFiles, normalizeSiteUrl, serializeStructuredData } from './seo.ts';
+import { discoveryFiles, normalizeSiteUrl, notFoundPage, serializeStructuredData } from './seo.ts';
 import { renderPage } from './view.ts';
 
 test('production canonical stays HTTPS and drops shared questions and fragments', () => {
@@ -45,7 +45,20 @@ test('static creator markup contains the approved UI and respects a non-root ass
   assert.match(html, /data-action="create">Crear enlace/);
   assert.match(html, /data-action="preview">Ver ejemplo/);
   assert.match(html, /src="\/demo\/brand\/idir-ai\.svg"/);
-  assert.doesNotMatch(html, /Escribe una pregunta, copia|Qué es esto/);
+  assert.doesNotMatch(html, /Escribe una pregunta, copia/);
+  assert.match(html, /<h2 id="about-title">¿Qué es Pregúntale a GPT\?<\/h2>/);
+  assert.match(html, /LMGTFY \(«Let me Google that for you»\) de ChatGPT, en español/);
+  assert.doesNotMatch(renderPage({ watching: true }), /about-title/);
   assert.match(html, /Proyecto independiente, sin relación con OpenAI\./);
   assert.doesNotMatch(renderPage({ draft: '<script>private-question</script>' }), /private-question/);
+});
+
+test('the 404 page sends visitors home with any shared question and stays out of search', () => {
+  const html = notFoundPage(normalizeSiteUrl('https://example.com/demo/?q=privado'));
+  assert.match(html, /<html lang="es">/);
+  assert.match(html, /<meta name="robots" content="noindex" \/>/);
+  assert.match(html, /if \(location\.pathname !== "\/demo\/"\) location\.replace\("\/demo\/" \+ location\.search \+ location\.hash\)/);
+  assert.match(html, /<a href="\/demo\/">Ir a Pregúntale a GPT<\/a>/);
+  assert.match(html, /url\('\/demo\/fonts\/inter-latin\.woff2'\)/);
+  assert.doesNotMatch(html, /privado/);
 });

@@ -53,7 +53,7 @@ Para usar otro dominio o ruta, adapta `CNAME` y los ajustes de Pages. Para compi
 
 ## SEO y recursos gráficos
 
-La portada incluye HTML prerenderizado, canonical, Open Graph, tarjeta grande de X y datos estructurados `WebSite`/`WebApplication`. El build genera `robots.txt`, `sitemap.xml` y `llms.txt`. Los enlaces con preguntas comparten la canonical de la portada y no se enumeran en el sitemap. `llms.txt` describe la herramienta; no garantiza posicionamiento ni citas en asistentes.
+La portada incluye HTML prerenderizado, canonical, Open Graph, tarjeta grande de X y datos estructurados `WebSite`/`WebApplication`. Debajo de la herramienta, un texto breve explica qué es la web para los buscadores. El build genera `robots.txt`, `sitemap.xml`, `llms.txt` y `404.html`, que lleva cualquier ruta desconocida a la portada sin perder la pregunta del enlace y no se indexa. Los enlaces con preguntas comparten la canonical de la portada y no se enumeran en el sitemap. `llms.txt` describe la herramienta; no garantiza posicionamiento ni citas en asistentes.
 
 La tarjeta social mide 1200 × 630 px. El favicon tiene fondo transparente y adapta sus colores al tema claro u oscuro del navegador.
 

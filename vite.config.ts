@@ -1,10 +1,10 @@
 import { defineConfig, loadEnv, type HtmlTagDescriptor, type Plugin } from 'vite';
-import { discoveryFiles, normalizeSiteUrl, serializeStructuredData, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_DESCRIPTION, SOCIAL_IMAGE_ALT, SOCIAL_IMAGE_PATH, SOCIAL_TITLE } from './src/seo.ts';
+import { discoveryFiles, normalizeSiteUrl, notFoundPage, serializeStructuredData, SITE_DESCRIPTION, SITE_TITLE, SOCIAL_DESCRIPTION, SOCIAL_IMAGE_ALT, SOCIAL_IMAGE_PATH, SOCIAL_TITLE } from './src/seo.ts';
 import { renderPage } from './src/view.ts';
 
 function discoverableSite(site: URL): Plugin {
   let assetBase = '/';
-  const files = discoveryFiles(site);
+  const files = { ...discoveryFiles(site), '404.html': notFoundPage(site) };
   const socialImage = new URL(SOCIAL_IMAGE_PATH, site).href;
   const meta = (attribute: 'name' | 'property', name: string, content: string): HtmlTagDescriptor => ({ tag: 'meta', attrs: { [attribute]: name, content }, injectTo: 'head' });
   return {
@@ -46,7 +46,8 @@ function discoverableSite(site: URL): Plugin {
         const pathname = new URL(req.url || '/', 'http://localhost').pathname;
         const file = pathname.replace(/^\//, '');
         if (!Object.hasOwn(files, file)) return next();
-        res.setHeader('Content-Type', `${file.endsWith('.xml') ? 'application/xml' : 'text/plain'}; charset=utf-8`);
+        const type = file.endsWith('.html') ? 'text/html' : file.endsWith('.xml') ? 'application/xml' : 'text/plain';
+        res.setHeader('Content-Type', `${type}; charset=utf-8`);
         res.end(files[file]);
       });
     },

@@ -24,6 +24,7 @@ assert.match(html, /<h1>Déjame preguntarle a <strong>ChatGPT<\/strong> por ti\.
 assert.match(html, /<textarea id="question"/);
 assert.match(html, /data-action="create">Crear enlace/);
 assert.match(html, /sin relación con OpenAI/);
+assert.match(html, /<h2 id="about-title">¿Qué es Pregúntale a GPT\?<\/h2>/);
 assert.doesNotMatch(html, /<!--app-html-->|<div id="app"><\/div>/);
 assert.match(html, /<title>[^<]*LMGTFY para ChatGPT en español<\/title>/);
 assert.match(meta('description'), /Crea gratis un enlace animado/);
@@ -107,4 +108,16 @@ const sitemap = await readFile(resolve(output, 'sitemap.xml'), 'utf8');
 assert.equal((sitemap.match(/<loc>/g) || []).length, 1);
 assert.ok(sitemap.includes(`<loc>${site.href.replaceAll('&', '&amp;')}</loc>`));
 assert.ok((await readFile(resolve(output, 'llms.txt'), 'utf8')).includes(site.href));
-console.log(`Built SEO checked: prerendered UI, metadata, JSON-LD, manifest and app icons, discovery files, local assets and 1200×630 PNG (${site.href}).`);
+
+// GitHub Pages serves 404.html for unknown paths; it must point home at this base.
+const notFound = await readFile(resolve(output, '404.html'), 'utf8');
+assert.match(notFound, /<meta name="robots" content="noindex" \/>/);
+assert.ok(notFound.includes(`location.replace(${JSON.stringify(site.pathname)} + location.search + location.hash)`));
+assert.ok(notFound.includes(`<a href="${site.pathname}">`));
+for (const [, attribute, cssUrl] of notFound.matchAll(/(?:href|src)="([^"]+)"|url\('([^']+)'\)/g)) {
+  const path = attribute ?? cssUrl;
+  if (path === site.pathname) continue;
+  assert.ok(path.startsWith(site.pathname), `404 resource outside deployment base: ${path}`);
+  assert.ok((await stat(resolve(output, decodeURIComponent(path.slice(site.pathname.length))))).isFile(), `Missing 404 resource: ${path}`);
+}
+console.log(`Built SEO checked: prerendered UI, metadata, JSON-LD, manifest and app icons, discovery files, 404 page, local assets and 1200×630 PNG (${site.href}).`);

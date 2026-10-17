@@ -66,3 +66,42 @@ export function discoveryFiles(site: URL): Record<string, string> {
     'llms.txt': `# Pregúntale a GPT\n\n> Herramienta gratuita en español, inspirada en LMGTFY, para compartir una demostración animada de cómo hacer una pregunta en ChatGPT.\n\n## Funcionamiento\n\n1. La persona escribe una pregunta y crea un enlace.\n2. El enlace contiene la pregunta codificada en base64url en el fragmento #q=, que el navegador no envía al servidor. Al abrirlo, se reproduce una animación del cursor escribiendo la pregunta y pulsando enviar en una interfaz de demostración.\n3. La animación termina con «De nada. La próxima ya sabes dónde preguntar.» y ofrece abrir la pregunta en ChatGPT.\n\nLa herramienta no genera respuestas de inteligencia artificial ni realiza consultas a una API de ChatGPT. Crear enlaces y ver la animación requiere JavaScript; no requiere registro en esta web.\n\n## Enlaces\n\n- [Crear un enlace](${site.href}): herramienta principal.\n- [idir.ai](https://idir.ai/): creador del proyecto.\n- [ChatGPT](https://chatgpt.com/): servicio externo al que dirige el botón final.\n\nProyecto independiente, sin relación con OpenAI. ChatGPT es una marca de OpenAI.\n`,
   };
 }
+
+/**
+ * GitHub Pages serves this for any unknown path. Visitors go straight to the
+ * homepage, keeping a shared question (?q= or #q=) from a mistyped path.
+ */
+export function notFoundPage(site: URL): string {
+  const home = escapeXml(site.pathname);
+  const redirect = JSON.stringify(site.pathname).replace(/</g, '\\u003c');
+  return `<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>Página no encontrada — Pregúntale a GPT</title>
+    <link rel="icon" href="${home}favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/svg+xml" href="${home}favicon.svg" />
+    <script>if (location.pathname !== ${redirect}) location.replace(${redirect} + location.search + location.hash);</script>
+    <style>
+      @font-face { font-family: Inter; font-weight: 400 600; font-display: swap; src: url('${home}fonts/inter-latin.woff2') format('woff2'); }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; box-sizing: border-box; background: #fff; color: #202124; font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; text-align: center; }
+      h1 { margin: 0 0 8px; font-size: 30px; font-weight: 500; letter-spacing: -.5px; }
+      p { margin: 0 0 24px; color: #5e6266; font-size: 17px; line-height: 1.5; }
+      a { display: inline-block; padding: 12px 22px; border-radius: 24px; background: #222; color: #fff; text-decoration: none; }
+      a:focus-visible { outline: 2px solid #547aa0; outline-offset: 4px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Esta página no existe.</h1>
+      <p>Vuelve a la portada para crear tu enlace.</p>
+      <a href="${home}">Ir a Pregúntale a GPT</a>
+    </main>
+  </body>
+</html>
+`;
+}
